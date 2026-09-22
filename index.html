@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#1e1f22">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Disco Chat: chat de la comunidad estilo Discord. Sin registro, con apodo.">
+<title>Disco Chat 💬 — Comunidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#313338;--side:#1e1f22;--panel:#2b2d31;--line:rgba(255,255,255,.08);--text:#f5f7ff;--muted:#949ba4;--a:#8b5cf6}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,sans-serif;height:100dvh;display:flex;flex-direction:column}
+.topbar{background:var(--side);padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #111}
+.topbar a{color:#b39aff;text-decoration:none;font-size:13px;border:1px solid var(--line);padding:7px 12px;border-radius:8px}
+.brand{font:700 15px 'Space Grotesk'}
+.layout{flex:1;display:grid;grid-template-columns:230px 1fr 200px;min-height:0}
+aside{background:var(--side);overflow-y:auto;padding:12px}
+aside h4{font-size:11px;color:var(--muted);letter-spacing:1px;margin:8px 4px}
+.chan{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:none;color:var(--muted);font:600 14px Inter;padding:9px 10px;border-radius:8px;cursor:pointer;font-family:inherit}
+.chan:hover{background:rgba(255,255,255,.05);color:#fff}
+.chan.on{background:rgba(139,92,246,.25);color:#fff}
+.member{display:flex;gap:8px;align-items:center;padding:6px 8px;font-size:13px;color:#dbdee1}
+.dot{width:9px;height:9px;border-radius:50%;background:#23a55a;flex:none}
+main{display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.roomhead{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;display:flex;gap:8px;align-items:center}
+.roomhead small{color:var(--muted);font-weight:400}
+#msgs{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:2px;-webkit-overflow-scrolling:touch}
+.m{display:flex;gap:12px;padding:7px 4px;border-radius:8px}
+.m:hover{background:rgba(255,255,255,.03)}
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:16px;color:#fff;flex:none}
+.mhead{font-size:13px}.mhead b{margin-right:8px}.mhead time{color:var(--muted);font-size:11px}
+.mtxt{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:2px}
+.sendbar{padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.sendbox{background:#383a40;border-radius:10px;display:flex;gap:8px;padding:8px}
+.sendbox input{flex:1;background:none;border:none;outline:none;color:#fff;font:400 14px Inter;min-width:0}
+.sendbox button{background:var(--a);border:none;border-radius:8px;color:#fff;font-weight:700;padding:9px 16px;cursor:pointer;font-family:inherit}
+#gate{position:fixed;inset:0;z-index:500;background:rgba(10,10,15,.96);display:grid;place-items:center;padding:20px}
+.gate-box{max-width:400px;text-align:center;padding:28px;background:var(--panel);border:1px solid var(--line);border-radius:15px}
+.gate-box input{width:100%;font:inherit;color:#fff;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:12px;outline:none;margin:10px 0}
+.btn{padding:11px 20px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.05);cursor:pointer;font-family:inherit}
+.primary{background:linear-gradient(#9d6bff,#6d28d9)}
+.muted{color:var(--muted);font-size:12px}
+.mobchan{display:none;background:var(--side);padding:8px 12px;gap:8px;overflow-x:auto}
+.mobchan .chan{white-space:nowrap;width:auto}
+@media(max-width:900px){.layout{grid-template-columns:1fr}aside{display:none}.mobchan{display:flex}}
+button,.btn,.chan{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+</style>
+</head>
+<body>
+<div id="gate"><div class="gate-box">
+  <div style="font-size:44px">💬</div>
+  <h2 style="font-family:'Space Grotesk';margin:6px 0">Disco Chat</h2>
+  <p class="muted">Chat público de la comunidad. Elige un apodo (sin contraseña). Sé respetuoso: nada de spam, insultos ni contenido +18.</p>
+  <input id="nick" maxlength="20" placeholder="Tu apodo… (ej: StevePro22)">
+  <div><button class="btn primary" id="gateOk" type="button" style="width:100%">Entrar al chat 🚀</button></div>
+  <p class="muted">Los mensajes son públicos y se actualizan cada ~15 segundos.</p>
+</div></div>
+<div class="topbar">
+  <a href="https://discohikory.github.io/Portafolio/">← Portafolio</a>
+  <span class="brand">💬 Disco Chat</span>
+  <span class="muted" id="upd" style="margin-left:auto"></span>
+  <button class="btn" id="refBtn" type="button" style="padding:7px 12px">↻</button>
+</div>
+<div class="mobchan" id="mobchan"></div>
+<div class="layout">
+  <aside>
+    <h4>CANALES DE TEXTO</h4>
+    <div id="chans"></div>
+    <h4 style="margin-top:16px">NORMAS</h4>
+    <p class="muted">1. Respeto siempre · 2. Sin spam · 3. Nada +18 · 4. Sin IPs ni datos personales</p>
+  </aside>
+  <main>
+    <div class="roomhead"><span id="roomName"># general</span><small id="roomDesc"></small></div>
+    <div id="msgs"></div>
+    <div class="sendbar"><div class="sendbox">
+      <input id="msgIn" maxlength="280" placeholder="Enviar mensaje a #general" autocomplete="off">
+      <button id="sendBtn" type="button">Enviar</button>
+    </div></div>
+  </main>
+  <aside>
+    <h4>EN LÍNEA <span id="onN"></span></h4>
+    <div id="members"></div>
+  </aside>
+</div>
+<script>
+const BIN="6ab3153fffd5d1605324b0e2";
+const KEY="$2a$10$XbVd43wzBhlIfE1632782ePKNz5e/MaX25U3NJ5JRIBKtJt0ILnXC";
+const ROOMS=[["general","# general","Charla libre de la comunidad"],["minecraft","# minecraft","Servidores, builds y staff"],["offtopic","# off-topic","Memes y de todo"],["sugerencias","# sugerencias","Ideas para el server y las webs"]];
+const COLORS=["#8b5cf6","#22d3ee","#4ade80","#f472b6","#fbbf24","#f87171","#a3e635","#38bdf8"];
+let room="general",nick="",myColor="#8b5cf6",lastSend=0,pollT=null;
+try{nick=localStorage.getItem('dc_nick')||'';myColor=localStorage.getItem('dc_color')||COLORS[Math.floor(Math.random()*COLORS.length)]}catch(e){}
+if(nick){document.getElementById('gate').style.display='none';start()}
+document.getElementById('nick').value=nick;
+document.getElementById('gateOk').addEventListener('click',()=>{
+  const v=document.getElementById('nick').value.trim().slice(0,20);
+  if(v.length<2){alert('Apodo de mínimo 2 letras.');return}
+  if(!/^[A-Za-z0-9 _-]+$/.test(v)){alert('Solo letras, números, espacios, _ y -.');return}
+  nick=v;
+  try{localStorage.setItem('dc_nick',nick);localStorage.setItem('dc_color',myColor)}catch(e){}
+  document.getElementById('gate').style.display='none';
+  start();
+});
+function drawChans(){
+  const h=ROOMS.map(r=>`<button class="chan${r[0]===room?' on':''}" data-r="${r[0]}"># ${r[0]}</button>`).join('');
+  document.getElementById('chans').innerHTML=h;
+  document.getElementById('mobchan').innerHTML=h;
+  document.querySelectorAll('[data-r]').forEach(b=>b.addEventListener('click',()=>{room=b.dataset.r;drawChans();paintHead();load()}));
+}
+function paintHead(){
+  const r=ROOMS.find(x=>x[0]===room);
+  document.getElementById('roomName').textContent=r[1];
+  document.getElementById('roomDesc').textContent=r[2];
+  document.getElementById('msgIn').placeholder='Enviar mensaje a '+r[1];
+}
+function esc(s){return String(s||'')}
+function fmtT(ts){try{const d=new Date(Number(ts));return d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})}catch(e){return''}}
+async function apiGet(){
+  const r=await fetch('https://api.jsonbin.io/v3/b/'+BIN+'/latest',{headers:{'X-Access-Key':KEY}});
+  if(!r.ok)throw 0;
+  const j=await r.json();
+  return (j.record&&j.record.rooms)||{};
+}
+async function apiPut(rooms){
+  await fetch('https://api.jsonbin.io/v3/b/'+BIN,{method:'PUT',headers:{'Content-Type':'application/json','X-Access-Key':KEY,'X-Bin-Versioning':'false'},body:JSON.stringify({rooms})});
+}
+function paintMsgs(list){
+  const box=document.getElementById('msgs');
+  if(!list.length){box.innerHTML='<p class="muted" style="text-align:center">Sin mensajes. ¡Sé el primero! 🎉</p>';return}
+  box.innerHTML='';
+  list.forEach(m=>{
+    const d=document.createElement('div');d.className='m';
+    const av=document.createElement('div');av.className='av';av.style.background=m.c||'#8b5cf6';av.textContent=(m.n||'?').slice(0,1).toUpperCase();
+    const bd=document.createElement('div');
+    const hd=document.createElement('div');hd.className='mhead';
+    const b=document.createElement('b');b.style.color=m.c||'#fff';b.textContent=m.n||'???';
+    const tm=document.createElement('time');tm.textContent=fmtT(m.ts);
+    hd.appendChild(b);hd.appendChild(tm);
+    const tx=document.createElement('div');tx.className='mtxt';tx.textContent=m.t||'';
+    bd.appendChild(hd);bd.appendChild(tx);
+    d.appendChild(av);d.appendChild(bd);
+    box.appendChild(d);
+  });
+  box.scrollTop=box.scrollHeight;
+}
+async function load(silent){
+  try{
+    const rooms=await apiGet();
+    const list=(rooms[room]||[]).slice(-60);
+    paintMsgs(list);
+    const seen={},now=Date.now();
+    Object.values(rooms).flat().forEach(m=>{if(m&&m.n&&now-Number(m.ts)<600000)seen[m.n]=m.c});
+    const names=Object.keys(seen).slice(0,30);
+    document.getElementById('onN').textContent='— '+names.length;
+    document.getElementById('members').innerHTML=names.map(n=>`<div class="member"><span class="dot"></span>${esc(n).replace(/</g,'&lt;')}</div>`).join('')||'<p class="muted">Nadie por aquí… 👻</p>';
+    document.getElementById('upd').textContent='↻ '+new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }catch(e){if(!silent)alert('Sin conexión con el chat. Revisa tu internet. ⚠️')}
+}
+async function send(){
+  const inp=document.getElementById('msgIn'),v=inp.value.trim().slice(0,280);
+  if(!v)return;
+  if(Date.now()-lastSend<6000){alert('Espera 6 segundos entre mensajes (anti-spam). ⏳');return}
+  lastSend=Date.now();inp.value='';
+  try{
+    const rooms=await apiGet();
+    const list=rooms[room]||[];
+    list.push({n:nick,t:v,c:myColor,ts:Date.now()});
+    rooms[room]=list.slice(-60);
+    await apiPut(rooms);
+    paintMsgs(rooms[room]);
+  }catch(e){alert('No se pudo enviar. Intenta luego. ⚠️')}
+}
+document.getElementById('sendBtn').addEventListener('click',send);
+document.getElementById('msgIn').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
+document.getElementById('refBtn').addEventListener('click',()=>load());
+function start(){
+  drawChans();paintHead();load();
+  clearInterval(pollT);
+  pollT=setInterval(()=>{if(!document.hidden)load(true)},15000);
+}
+</script>
+</body>
+</html>
