@@ -38,6 +38,17 @@ main{display:flex;flex-direction:column;min-width:0;background:var(--bg)}
 .sendbox{background:#383a40;border-radius:10px;display:flex;gap:8px;padding:8px}
 .sendbox input{flex:1;background:none;border:none;outline:none;color:#fff;font:400 14px Inter;min-width:0}
 .sendbox button{background:var(--a);border:none;border-radius:8px;color:#fff;font-weight:700;padding:9px 16px;cursor:pointer;font-family:inherit}
+.abtn{background:rgba(255,255,255,.07)!important;padding:9px 12px!important}
+#attPrev{display:none;gap:8px;align-items:center;background:#383a40;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px}
+#attPrev img{width:44px;height:44px;object-fit:cover;border-radius:8px}
+.mtxt img{max-width:220px;border-radius:8px;margin-top:6px;cursor:pointer;display:block}
+.mtxt audio{margin-top:6px;max-width:230px;height:36px}
+.macts{display:flex;gap:6px;margin-top:4px}
+.macts button{background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 4px;font-family:inherit}
+.macts button:hover{color:#fff}
+.edtag{font-size:10px;color:var(--muted)}
+#imgModal{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.92);place-items:center;padding:20px}
+#imgModal img{max-width:100%;max-height:90dvh;border-radius:10px}
 #gate{position:fixed;inset:0;z-index:500;background:rgba(10,10,15,.96);display:grid;place-items:center;padding:20px}
 .gate-box{max-width:400px;text-align:center;padding:28px;background:var(--panel);border:1px solid var(--line);border-radius:15px}
 .gate-box input{width:100%;font:inherit;color:#fff;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:12px;outline:none;margin:10px 0}
@@ -76,10 +87,16 @@ button,.btn,.chan{touch-action:manipulation;-webkit-tap-highlight-color:transpar
   <main>
     <div class="roomhead"><span id="roomName"># general</span><small id="roomDesc"></small></div>
     <div id="msgs"></div>
-    <div class="sendbar"><div class="sendbox">
+    <div class="sendbar">
+    <div id="attPrev"><span id="attTxt"></span><button class="btn" id="attX" type="button" style="padding:4px 10px">✕</button></div>
+    <div class="sendbox">
+      <button class="abtn" id="imgBtn" type="button" title="Enviar foto">📷</button>
+      <button class="abtn" id="audBtn" type="button" title="Nota de voz (máx 30s)">🎙️</button>
       <input id="msgIn" maxlength="280" placeholder="Enviar mensaje a #general" autocomplete="off">
       <button id="sendBtn" type="button">Enviar</button>
     </div></div>
+    <input type="file" id="fileIn" accept="image/*" style="display:none">
+    <div id="imgModal"><img id="imgFull" alt="foto ampliada"></div>
   </main>
   <aside>
     <h4>EN LÍNEA <span id="onN"></span></h4>
@@ -91,7 +108,13 @@ const BIN="6ab3153fffd5d1605324b0e2";
 const KEY="$2a$10$XbVd43wzBhlIfE1632782ePKNz5e/MaX25U3NJ5JRIBKtJt0ILnXC";
 const ROOMS=[["general","# general","Charla libre de la comunidad"],["minecraft","# minecraft","Servidores, builds y staff"],["offtopic","# off-topic","Memes y de todo"],["sugerencias","# sugerencias","Ideas para el server y las webs"]];
 const COLORS=["#8b5cf6","#22d3ee","#4ade80","#f472b6","#fbbf24","#f87171","#a3e635","#38bdf8"];
-let room="general",nick="",myColor="#8b5cf6",lastSend=0,pollT=null;
+let room="general",nick="",myColor="#8b5cf6",lastSend=0,pollT=null,lastRooms={},pendingImg=null,pendingAud=null,myKey="";
+try{
+  nick=localStorage.getItem('dc_nick')||'';
+  myColor=localStorage.getItem('dc_color')||COLORS[Math.floor(Math.random()*COLORS.length)];
+  myKey=localStorage.getItem('dc_key')||'';
+  if(!myKey){myKey=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('dc_key',myKey)}
+}catch(e){myKey='tmp'+Math.random()}
 try{nick=localStorage.getItem('dc_nick')||'';myColor=localStorage.getItem('dc_color')||COLORS[Math.floor(Math.random()*COLORS.length)]}catch(e){}
 if(nick){document.getElementById('gate').style.display='none';start()}
 document.getElementById('nick').value=nick;
@@ -141,6 +164,14 @@ function paintMsgs(list){
     hd.appendChild(b);hd.appendChild(tm);
     const tx=document.createElement('div');tx.className='mtxt';tx.textContent=m.t||'';
     bd.appendChild(hd);bd.appendChild(tx);
+    if(m.img){const im=document.createElement('img');im.src=m.img;im.alt='foto';im.setAttribute('data-zoom',m.img);tx.appendChild(im)}
+    if(m.aud){const au=document.createElement('audio');au.controls=true;au.preload='none';au.src=m.aud;tx.appendChild(au)}
+    if(m.ed){const e=document.createElement('span');e.className='edtag';e.textContent=' (editado)';hd.appendChild(e)}
+    if(m.k&&m.k===myKey){
+      const ac=document.createElement('div');ac.className='macts';
+      ac.innerHTML=`<button data-edit="${m.ts}" type="button">✏️ Editar</button><button data-del="${m.ts}" type="button">🗑️ Borrar</button>`;
+      bd.appendChild(ac);
+    }
     d.appendChild(av);d.appendChild(bd);
     box.appendChild(d);
   });
@@ -149,6 +180,7 @@ function paintMsgs(list){
 async function load(silent){
   try{
     const rooms=await apiGet();
+    lastRooms=rooms;
     const list=(rooms[room]||[]).slice(-60);
     paintMsgs(list);
     const seen={},now=Date.now();
@@ -161,18 +193,107 @@ async function load(silent){
 }
 async function send(){
   const inp=document.getElementById('msgIn'),v=inp.value.trim().slice(0,280);
-  if(!v)return;
+  if(!v&&!pendingImg&&!pendingAud)return;
   if(Date.now()-lastSend<6000){alert('Espera 6 segundos entre mensajes (anti-spam). ⏳');return}
   lastSend=Date.now();inp.value='';
+  const att={img:pendingImg,aud:pendingAud};
+  pendingImg=null;pendingAud=null;renderAtt();
   try{
     const rooms=await apiGet();
     const list=rooms[room]||[];
-    list.push({n:nick,t:v,c:myColor,ts:Date.now()});
+    list.push({n:nick,t:v,c:myColor,ts:Date.now(),k:myKey,img:att.img||undefined,aud:(att.aud&&att.aud.u)||undefined});
     rooms[room]=list.slice(-60);
     await apiPut(rooms);
+    lastRooms=rooms;
     paintMsgs(rooms[room]);
-  }catch(e){alert('No se pudo enviar. Intenta luego. ⚠️')}
+  }catch(e){alert('No se pudo enviar (¿archivo muy pesado o sin conexión?). ⚠️')}
 }
+// Delegación: zoom fotos + editar/borrar propios
+document.getElementById('msgs').addEventListener('click',async e=>{
+  const z=e.target.closest?e.target.closest('[data-zoom]'):null;
+  if(z){document.getElementById('imgFull').src=z.getAttribute('data-zoom');document.getElementById('imgModal').style.display='grid';return}
+  const eb=e.target.closest?e.target.closest('[data-edit]'):null;
+  const db=e.target.closest?e.target.closest('[data-del]'):null;
+  if(eb){
+    const ts=Number(eb.dataset.edit);
+    const m=(lastRooms[room]||[]).find(x=>Number(x.ts)===ts&&x.k===myKey);
+    if(!m){alert('Ese mensaje ya no está.');return}
+    const nv=prompt('Editar mensaje:',m.t||'');
+    if(nv===null)return;
+    m.t=nv.trim().slice(0,280);m.ed=1;
+    try{await apiPut(lastRooms);paintMsgs(lastRooms[room])}catch(err){alert('No se pudo editar. ⚠️')}
+    return;
+  }
+  if(db){
+    if(!confirm('¿Borrar este mensaje?'))return;
+    const ts=Number(db.dataset.del);
+    lastRooms[room]=(lastRooms[room]||[]).filter(x=>!(Number(x.ts)===ts&&x.k===myKey));
+    try{await apiPut(lastRooms);paintMsgs(lastRooms[room])}catch(err){alert('No se pudo borrar. ⚠️')}
+  }
+});
+document.getElementById('imgModal').addEventListener('click',()=>{document.getElementById('imgModal').style.display='none';document.getElementById('imgFull').removeAttribute('src')});
+// Adjuntar foto (comprimida para que quepa en la base gratis)
+function renderAtt(){
+  const box=document.getElementById('attPrev');
+  if(!pendingImg&&!pendingAud){box.style.display='none';return}
+  box.style.display='flex';
+  box.querySelector('#attTxt').textContent=(pendingImg?'📷 Foto lista ':'')+(pendingAud?'🎤 Audio '+pendingAud.s+'s listo':'');
+  const old=box.querySelector('img');if(old)old.remove();
+  if(pendingImg){const th=document.createElement('img');th.src=pendingImg;box.prepend(th)}
+}
+document.getElementById('attX').addEventListener('click',()=>{pendingImg=null;pendingAud=null;renderAtt()});
+document.getElementById('imgBtn').addEventListener('click',()=>document.getElementById('fileIn').click());
+document.getElementById('fileIn').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0];
+  e.target.value='';
+  if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      const M=640,sc=Math.min(1,M/Math.max(im.width,im.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      const url=c.toDataURL('image/jpeg',0.65);
+      if(url.length>120000){alert('Foto muy pesada aun comprimida. Prueba otra. ⚠️');return}
+      pendingImg=url;renderAtt();
+    };
+    im.onerror=()=>alert('No se pudo leer esa imagen.');
+    im.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+});
+// Nota de voz (máx 30s, bitrate bajo para la base gratis)
+let MR=null,mChunks=[],mSec=0,mTimer=null;
+function mrMime(){
+  const cands=['audio/webm;codecs=opus','audio/webm','audio/mp4'];
+  try{return cands.find(c=>window.MediaRecorder&&MediaRecorder.isTypeSupported(c))||''}catch(e){return''}
+}
+document.getElementById('audBtn').addEventListener('click',async()=>{
+  const btn=document.getElementById('audBtn');
+  if(MR){try{MR.stop()}catch(e){}return}
+  if(!window.MediaRecorder){alert('Tu navegador no graba audio (iPhone muy viejo).');return}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mime=mrMime();
+    MR=new MediaRecorder(stream,mime?{mimeType:mime,audioBitsPerSecond:16000}:{audioBitsPerSecond:16000});
+    mChunks=[];mSec=0;
+    btn.textContent='⏺ 0s';
+    MR.ondataavailable=ev=>{if(ev.data&&ev.data.size)mChunks.push(ev.data)};
+    MR.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      clearInterval(mTimer);MR=null;btn.textContent='🎙️';
+      const blob=new Blob(mChunks,{type:MR&&MR.mimeType?MR.mimeType:'audio/webm'});
+      if(blob.size>200000){alert('Audio muy pesado (>200KB). Graba uno más corto. ⚠️');return}
+      const rd=new FileReader();
+      rd.onload=()=>{pendingAud={u:rd.result,s:mSec};renderAtt()};
+      rd.readAsDataURL(blob);
+    };
+    MR.start();
+    mTimer=setInterval(()=>{mSec++;btn.textContent='⏺ '+mSec+'s';if(mSec>=30){try{MR.stop()}catch(e){}}},1000);
+  }catch(e){alert('Sin acceso al micrófono. 🔇')}
+});
 document.getElementById('sendBtn').addEventListener('click',send);
 document.getElementById('msgIn').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
 document.getElementById('refBtn').addEventListener('click',()=>load());
